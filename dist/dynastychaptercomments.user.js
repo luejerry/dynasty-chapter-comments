@@ -5,7 +5,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.1.2
+// @version     0.2.2
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -135,11 +135,11 @@
         window.scrollBy({ top: 300, behavior: 'smooth' });
         const chapterJson = await fetch(`${window.location.pathname}.json`).then(r => r.json());
         const seriesTag = chapterJson.tags.find(t => t.type === 'Series');
-        if (!seriesTag) {
-            loadingDiv.remove();
-            mainView.append(renderUnsupported());
-            return;
-        }
+        // if (!seriesTag) {
+        //   loadingDiv.remove();
+        //   mainView.append(renderUnsupported());
+        //   return;
+        // }
         const chapterDate = new Date(chapterJson.added_on);
         const utcOffset = chapterJson.added_on.match(/(?:-|\+)\d?\d(?:\:\d\d)?$/)[0];
         const forumHref = (_a = Array.from(document.querySelectorAll('#chapter-actions a')).find(a => a.href.includes('/forum/topics/'))) === null || _a === void 0 ? void 0 : _a.href;
@@ -178,6 +178,9 @@
         docHead.appendChild(style);
     }
     async function getNextChapterDate(chapterJson, seriesTag) {
+        if (!seriesTag) {
+            return null;
+        }
         const seriesJson = await fetch(`/series/${seriesTag.permalink}.json`).then(r => r.json());
         const taggings = seriesJson.taggings.filter(t => t.permalink);
         const chapterIndex = taggings.findIndex(t => t.permalink === chapterJson.permalink);
@@ -238,12 +241,12 @@
         emptyContainerDiv.textContent = 'No forum posts for this chapter.';
         return emptyContainerDiv;
     }
-    function renderUnsupported() {
-        const emptyContainerDiv = document.createElement('div');
-        emptyContainerDiv.classList.add('chaptercomments-no-posts');
-        emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
-        return emptyContainerDiv;
-    }
+    // function renderUnsupported(): HTMLDivElement {
+    //   const emptyContainerDiv = document.createElement('div');
+    //   emptyContainerDiv.classList.add('chaptercomments-no-posts');
+    //   emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
+    //   return emptyContainerDiv;
+    // }
     function renderError() {
         const errorDiv = document.createElement('div');
         errorDiv.classList.add('chaptercomments-no-posts');

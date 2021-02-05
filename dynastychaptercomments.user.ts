@@ -4,7 +4,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.1.2
+// @version     0.2.2
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -187,11 +187,11 @@ interface ForumPost {
       r.json(),
     );
     const seriesTag: TagJson = chapterJson.tags.find(t => t.type === 'Series');
-    if (!seriesTag) {
-      loadingDiv.remove();
-      mainView.append(renderUnsupported());
-      return;
-    }
+    // if (!seriesTag) {
+    //   loadingDiv.remove();
+    //   mainView.append(renderUnsupported());
+    //   return;
+    // }
 
     const chapterDate: Date = new Date(chapterJson.added_on);
     const utcOffset: string = chapterJson.added_on.match(/(?:-|\+)\d?\d(?:\:\d\d)?$/)[0];
@@ -243,6 +243,9 @@ interface ForumPost {
   }
 
   async function getNextChapterDate(chapterJson: ChapterJson, seriesTag: TagJson): Promise<Date> {
+    if (!seriesTag) {
+      return null;
+    }
     const seriesJson: SeriesJson1 = await fetch(`/series/${seriesTag.permalink}.json`).then(r =>
       r.json(),
     );
@@ -313,12 +316,12 @@ interface ForumPost {
     return emptyContainerDiv;
   }
 
-  function renderUnsupported(): HTMLDivElement {
-    const emptyContainerDiv = document.createElement('div');
-    emptyContainerDiv.classList.add('chaptercomments-no-posts');
-    emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
-    return emptyContainerDiv;
-  }
+  // function renderUnsupported(): HTMLDivElement {
+  //   const emptyContainerDiv = document.createElement('div');
+  //   emptyContainerDiv.classList.add('chaptercomments-no-posts');
+  //   emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
+  //   return emptyContainerDiv;
+  // }
 
   function renderError(): HTMLDivElement {
     const errorDiv = document.createElement('div');
