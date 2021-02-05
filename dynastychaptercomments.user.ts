@@ -6,6 +6,8 @@
 // @include     https://dynasty-scans.com/chapters/*
 // @version     0.1.0
 // @grant       none
+// @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
+// @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // ==/UserScript==
 
 interface ChapterJson {
