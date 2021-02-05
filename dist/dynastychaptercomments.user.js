@@ -5,7 +5,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.2.2
+// @version     0.2.3
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -42,11 +42,18 @@
   }
 
   .chaptercomments-post-body {
-    margin-left: 16px;
+    margin-left: 10px;
+    width: 100%;
   }
 
   .chaptercomments-post-header {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+    padding: 4px 6px;
+    background: #eee;
+  }
+
+  .chaptercomments-post-body .message {
+    padding: 0 6px;
   }
 
   .chaptercomments-author-link {
@@ -258,12 +265,10 @@
         postContainerDiv.classList.add('chaptercomments-post');
         const thumbnailDiv = document.createElement('div');
         thumbnailDiv.classList.add('chaptercomments-thumbnail-container');
-        if (post.thumbnail) {
-            const thumbnailImg = document.createElement('img');
-            thumbnailImg.classList.add('chaptercomments-thumbnail-image');
-            thumbnailImg.src = post.thumbnail;
-            thumbnailDiv.appendChild(thumbnailImg);
-        }
+        const thumbnailImg = document.createElement('img');
+        thumbnailImg.classList.add('chaptercomments-thumbnail-image');
+        thumbnailImg.src = post.thumbnail || '/assets/avatar_missing_thumb.png';
+        thumbnailDiv.appendChild(thumbnailImg);
         postContainerDiv.appendChild(thumbnailDiv);
         const bodyContainerDiv = document.createElement('div');
         bodyContainerDiv.classList.add('chaptercomments-post-body');
