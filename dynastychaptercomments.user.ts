@@ -4,7 +4,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.1.1
+// @version     0.1.2
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -246,12 +246,13 @@ interface ForumPost {
     const seriesJson: SeriesJson1 = await fetch(`/series/${seriesTag.permalink}.json`).then(r =>
       r.json(),
     );
-    const chapterIndex = seriesJson.taggings.findIndex(t => t.permalink === chapterJson.permalink);
+    const taggings = seriesJson.taggings.filter(t => t.permalink);
+    const chapterIndex = taggings.findIndex(t => t.permalink === chapterJson.permalink);
     if (chapterIndex < 0) {
       throw new Error('chapter not found in series, this should not happen');
     }
 
-    const nextChapter = seriesJson.taggings[chapterIndex + 1];
+    const nextChapter = taggings[chapterIndex + 1];
     if (!nextChapter) {
       return null;
     }
