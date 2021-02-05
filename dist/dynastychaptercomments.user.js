@@ -5,7 +5,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.1.0
+// @version     0.1.1
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -303,7 +303,7 @@
         }
         const renderedPosts = postsInInterval.map(post => renderForumPost(post));
         container.append(...renderedPosts);
-        if (maxDate && forumPosts.every(post => post.date < maxDate)) {
+        if (!maxDate || forumPosts.every(post => post.date < maxDate)) {
             renderPosts({
                 forumPath,
                 page: page + 1,
