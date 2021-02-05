@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Dynasty Chapter Comments
 // @author      cyricc
-// @description Mark chapters that you have already read in Dynasty Scans chapter lists.
+// @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
 // @version     0.1.0
@@ -162,11 +162,15 @@ interface ForumPost {
     });
 
     const loadButton = renderLoadComments();
-    loadButton.addEventListener('click', () => {
+    loadButton.addEventListener('click', async () => {
       mainViewDiv.classList.remove('hidden');
       loadButton.remove();
       controlDiv.append(hideButton);
-      main(mainViewDiv);
+      try {
+        await main(mainViewDiv);
+      } catch (err) {
+        mainViewDiv.append(renderError());
+      }
     });
     controlDiv.append(loadButton);
 
@@ -184,33 +188,20 @@ interface ForumPost {
     );
     const seriesTag: TagJson = chapterJson.tags.find(t => t.type === 'Series');
     if (!seriesTag) {
+      loadingDiv.remove();
+      mainView.append(renderUnsupported());
       return;
     }
 
-    // const seriesJson: SeriesJson1 = await fetch(`/series/${seriesTag.permalink}.json`).then(r =>
-    //   r.json(),
-    // );
-
-    // const chapterIndex = seriesJson.taggings.findIndex(t => t.permalink === chapterJson.permalink);
-    // if (chapterIndex < 0) {
-    //   throw new Error('chapter not found in series, this should not happen');
-    // }
     const chapterDate: Date = new Date(chapterJson.added_on);
     const utcOffset: string = chapterJson.added_on.match(/(?:-|\+)\d?\d(?:\:\d\d)?$/)[0];
 
-    // const nextChapter = seriesJson.taggings[chapterIndex + 1];
-    // let nextChapterDate: Date = undefined;
-    // if (nextChapter) {
-    //   const nextChapterJson: ChapterJson = await fetch(
-    //     `/chapters/${nextChapter.permalink}.json`,
-    //   ).then(r => r.json());
-    //   nextChapterDate = new Date(nextChapterJson.added_on);
-    // }
     const forumHref = Array.from(
       document.querySelectorAll<HTMLAnchorElement>('#chapter-actions a'),
     ).find(a => a.href.includes('/forum/topics/'))?.href;
     if (!forumHref) {
-      console.log('no forum post found');
+      loadingDiv.remove();
+      mainView.append(renderNoPosts());
       return;
     }
 
@@ -228,15 +219,8 @@ interface ForumPost {
 
     loadingDiv.remove();
 
-    // const { forumDoc: forumPage, page: pageNum, numPages: maxPage } = await getChapterForumPage({
-    //   forumPath: forumHref,
-    //   minDate: chapterDate,
-    //   utcOffset: utcOffset,
-    // });
-    console.log(forumPage, pageNum);
-
     if (!forumPage) {
-      console.log('no posts found');
+      mainView.append(renderNoPosts());
       return;
     }
 
@@ -328,6 +312,20 @@ interface ForumPost {
     return emptyContainerDiv;
   }
 
+  function renderUnsupported(): HTMLDivElement {
+    const emptyContainerDiv = document.createElement('div');
+    emptyContainerDiv.classList.add('chaptercomments-no-posts');
+    emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
+    return emptyContainerDiv;
+  }
+
+  function renderError(): HTMLDivElement {
+    const errorDiv = document.createElement('div');
+    errorDiv.classList.add('chaptercomments-no-posts');
+    errorDiv.textContent = 'Sorry, an error occurred trying to load forum posts.';
+    return errorDiv;
+  }
+
   function renderForumPost(post: ForumPost): HTMLDivElement {
     const postContainerDiv = document.createElement('div');
     postContainerDiv.classList.add('chaptercomments-post');
@@ -357,7 +355,6 @@ interface ForumPost {
       year: 'numeric',
       hour: 'numeric',
       minute: 'numeric',
-      second: 'numeric',
     }).format(post.date);
     bodyHeaderDiv.append(authorA, dateA);
     post.body.classList.remove('span10');
@@ -391,13 +388,9 @@ interface ForumPost {
     const forumPage = await getForumPage(forumPath, page);
     container.removeChild(loadingDiv);
     const forumPosts: ForumPost[] = mapForumPosts(forumPage, utcOffset);
-    console.log(forumPosts);
     const postsInInterval = forumPosts
       .filter(post => post.date > minDate)
       .filter(post => !maxDate || post.date < maxDate);
-    console.log('chapter date', minDate);
-    console.log('next chapter date', maxDate);
-    console.log(postsInInterval);
     if (!postsInInterval.length) {
       container.append(renderNoPosts());
       return;
@@ -405,7 +398,6 @@ interface ForumPost {
     const renderedPosts = postsInInterval.map(post => renderForumPost(post));
     container.append(...renderedPosts);
     if (maxDate && forumPosts.every(post => post.date < maxDate)) {
-      console.log('more posts possible, rendering additional page:', page + 1);
       renderPosts({
         forumPath,
         page: page + 1,
@@ -420,13 +412,11 @@ interface ForumPost {
 
   async function getForumPage(forumPath: string, page: number): Promise<Document> {
     if (forumPageCache[page]) {
-      console.log('cache hit', page);
       return forumPageCache[page];
     }
     const forumDoc = await fetch(`${forumPath}?page=${page}`)
       .then(r => r.text())
       .then(html => new DOMParser().parseFromString(html, 'text/html'));
-    console.log('cache miss', page);
     forumPageCache[page] = forumDoc;
     return forumDoc;
   }
@@ -445,7 +435,6 @@ interface ForumPost {
     numPages: number;
   }> {
     const forumDoc = await getForumPage(forumPath, 1);
-
     const pageControls = Array.from(forumDoc.querySelectorAll('.pagination li'));
     const numPages = pageControls.length
       ? parseInt(pageControls[pageControls.length - 2].textContent, 10)
@@ -497,10 +486,8 @@ interface ForumPost {
     { min, max, utcOffset }: { min: number; max: number; utcOffset: string },
   ): Promise<{ forumDoc?: Document; page: number }> {
     if (min >= max) {
-      console.log('min = max', max);
       const { forumDoc, compare } = await scanForumPage(forumPath, max, minDate, utcOffset);
       if (compare <= 0) {
-        console.log('found at', max, forumDoc);
         return { forumDoc, page: max };
       } else {
         return { page: max };
@@ -509,25 +496,19 @@ interface ForumPost {
     const page = Math.floor((max + min) / 2);
     const { compare, forumDoc } = await scanForumPage(forumPath, page, minDate, utcOffset);
     if (compare === 0) {
-      console.log('found at ', page);
       return { forumDoc, page };
     } else if (compare < 0) {
       if (page === min) {
-        console.log('min reached', page);
         return { forumDoc, page };
       }
-      console.log(min, max, 'looking below', page);
       const result = await binarySearch(forumPath, minDate, { min, max: page - 1, utcOffset });
       if (!result.forumDoc) {
-        console.log('returning ', page);
       }
       return result.forumDoc ? result : { forumDoc, page };
     } else {
       if (page === max) {
-        console.log('max reached', page);
         return { forumDoc, page };
       }
-      console.log(min, max, 'looking above', page);
       return await binarySearch(forumPath, minDate, { min: page + 1, max, utcOffset });
     }
   }
