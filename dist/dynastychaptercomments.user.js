@@ -5,7 +5,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.2.3
+// @version     0.2.4
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -54,6 +54,7 @@
 
   .chaptercomments-post-body .message {
     padding: 0 6px;
+    overflow-wrap: anywhere;
   }
 
   .chaptercomments-author-link {
