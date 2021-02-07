@@ -4,7 +4,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.2.4
+// @version     0.3.0
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -124,7 +124,6 @@ interface ForumPost {
 
   .chaptercomments-no-posts {
     margin: auto;
-    /* font-style: italic; */
     color: #999;
   }
 
@@ -140,6 +139,21 @@ interface ForumPost {
 
   .chaptercomments-control {
     margin-top: 16px;
+  }
+
+  .chaptercomments-footer {
+    display: flex;
+    justify-content: center;
+  }
+
+  .chaptercomments-footer button {
+    border: none;
+    background: none;
+    opacity: 0.4;
+  }
+
+  .chaptercomments-footer button:focus {
+    outline: none;
   }
   `;
 
@@ -178,6 +192,7 @@ interface ForumPost {
         await main(mainViewDiv);
       } catch (err) {
         mainViewDiv.append(renderError());
+        throw err;
       }
     });
     controlDiv.append(loadButton);
@@ -232,7 +247,7 @@ interface ForumPost {
       return;
     }
 
-    renderPosts({
+    await renderPosts({
       forumPath: forumHref,
       page: pageNum,
       maxPage,
@@ -241,6 +256,8 @@ interface ForumPost {
       maxDate: nextChapterDate,
       container: mainView,
     });
+
+    mainView.append(renderFooter());
   }
 
   function applyGlobalStyles(styleText: string): void {
@@ -308,6 +325,22 @@ interface ForumPost {
     hideIcon.classList.add('icon-chevron-up');
     hideButton.append(hideIcon);
     return hideButton;
+  }
+
+  function renderFooter(): HTMLDivElement {
+    const footerDiv = document.createElement('div');
+    footerDiv.classList.add('chaptercomments-footer');
+    const backTopButton = document.createElement('button');
+    backTopButton.classList.add('chaptercomments-back-top-button');
+    backTopButton.textContent = 'Back to top ';
+    backTopButton.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    const upIcon = document.createElement('i');
+    upIcon.classList.add('icon-chevron-up');
+    backTopButton.append(upIcon);
+    footerDiv.append(backTopButton);
+    return footerDiv;
   }
 
   function renderLoadingPosts(): HTMLDivElement {
@@ -408,7 +441,7 @@ interface ForumPost {
     const renderedPosts = postsInInterval.map(post => renderForumPost(post));
     container.append(...renderedPosts);
     if (!maxDate || forumPosts.every(post => post.date < maxDate)) {
-      renderPosts({
+      await renderPosts({
         forumPath,
         page: page + 1,
         maxPage,
