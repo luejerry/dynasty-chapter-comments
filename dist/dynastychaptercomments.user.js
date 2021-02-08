@@ -5,7 +5,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.3.0
+// @version     0.3.1
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -158,11 +158,6 @@
         window.scrollBy({ top: 300, behavior: 'smooth' });
         const chapterJson = await fetch(`${window.location.pathname}.json`).then(r => r.json());
         const seriesTag = chapterJson.tags.find(t => t.type === 'Series');
-        // if (!seriesTag) {
-        //   loadingDiv.remove();
-        //   mainView.append(renderUnsupported());
-        //   return;
-        // }
         const chapterDate = new Date(chapterJson.added_on);
         const utcOffset = chapterJson.added_on.match(/(?:-|\+)\d?\d(?:\:\d\d)?$/)[0];
         const forumHref = (_a = Array.from(document.querySelectorAll('#chapter-actions a')).find(a => a.href.includes('/forum/topics/'))) === null || _a === void 0 ? void 0 : _a.href;
@@ -179,12 +174,14 @@
                 utcOffset: utcOffset,
             }),
         ]);
+        // console.log('looking from', chapterDate);
+        // console.log('looking to  ', nextChapterDate);
         loadingDiv.remove();
-        if (!forumPage) {
+        if (!forumPage || (nextChapterDate && (chapterDate > nextChapterDate))) {
             mainView.append(renderNoPosts());
             return;
         }
-        await renderPosts({
+        const posts = await renderPosts({
             forumPath: forumHref,
             page: pageNum,
             maxPage,
@@ -193,7 +190,12 @@
             maxDate: nextChapterDate,
             container: mainView,
         });
-        mainView.append(renderFooter());
+        if (posts.length) {
+            mainView.append(renderFooter());
+        }
+        else {
+            mainView.append(renderNoPosts());
+        }
     }
     function applyGlobalStyles(styleText) {
         const docHead = document.getElementsByTagName('head')[0];
@@ -280,12 +282,6 @@
         emptyContainerDiv.textContent = 'No forum posts for this chapter.';
         return emptyContainerDiv;
     }
-    // function renderUnsupported(): HTMLDivElement {
-    //   const emptyContainerDiv = document.createElement('div');
-    //   emptyContainerDiv.classList.add('chaptercomments-no-posts');
-    //   emptyContainerDiv.textContent = 'Sorry, only comments for chapters in a Series can be shown.';
-    //   return emptyContainerDiv;
-    // }
     function renderError() {
         const errorDiv = document.createElement('div');
         errorDiv.classList.add('chaptercomments-no-posts');
@@ -328,7 +324,7 @@
     }
     async function renderPosts({ forumPath, page, maxPage, utcOffset, minDate, maxDate, container, }) {
         if (page > maxPage) {
-            return;
+            return [];
         }
         const loadingDiv = renderLoadingPosts();
         container.append(loadingDiv);
@@ -338,23 +334,23 @@
         const postsInInterval = forumPosts
             .filter(post => post.date > minDate)
             .filter(post => !maxDate || post.date < maxDate);
-        if (!postsInInterval.length) {
-            container.append(renderNoPosts());
-            return;
-        }
         const renderedPosts = postsInInterval.map(post => renderForumPost(post));
         container.append(...renderedPosts);
         if (!maxDate || forumPosts.every(post => post.date < maxDate)) {
-            await renderPosts({
-                forumPath,
-                page: page + 1,
-                maxPage,
-                utcOffset,
-                minDate,
-                maxDate,
-                container,
-            });
+            return [
+                ...postsInInterval,
+                ...(await renderPosts({
+                    forumPath,
+                    page: page + 1,
+                    maxPage,
+                    utcOffset,
+                    minDate,
+                    maxDate,
+                    container,
+                })),
+            ];
         }
+        return postsInInterval;
     }
     async function getForumPage(forumPath, page) {
         if (forumPageCache[page]) {
@@ -410,6 +406,7 @@
         if (min >= max) {
             const { forumDoc, compare } = await scanForumPage(forumPath, max, minDate, utcOffset);
             if (compare <= 0) {
+                // console.log('found on page', max);
                 return { forumDoc, page: max };
             }
             else {
@@ -419,21 +416,13 @@
         const page = Math.floor((max + min) / 2);
         const { compare, forumDoc } = await scanForumPage(forumPath, page, minDate, utcOffset);
         if (compare === 0) {
+            // console.log('found on page', page);
             return { forumDoc, page };
         }
         else if (compare < 0) {
-            if (page === min) {
-                return { forumDoc, page };
-            }
-            const result = await binarySearch(forumPath, minDate, { min, max: page - 1, utcOffset });
-            if (!result.forumDoc) {
-            }
-            return result.forumDoc ? result : { forumDoc, page };
+            return await binarySearch(forumPath, minDate, { min, max: page, utcOffset });
         }
         else {
-            if (page === max) {
-                return { forumDoc, page };
-            }
             return await binarySearch(forumPath, minDate, { min: page + 1, max, utcOffset });
         }
     }

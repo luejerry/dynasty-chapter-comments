@@ -10,7 +10,7 @@
             "jsx": false
         },
         "sourceType": "module",
-        "ecmaVersion": 8
+        "ecmaVersion": 11
     },
     "extends": "eslint:recommended",
     "rules": {
@@ -21,14 +21,14 @@
         "no-unused-vars": "warn",
         "constructor-super": "warn",
         "valid-typeof": "warn",
-        "indent": ["warn", 2],
+        "indent": ["warn", 4],
         "no-console": ["warn"],
         "semi": "error",
         "arrow-parens": ["warn", "as-needed"],
         "no-trailing-spaces": "warn",
         "quotes": ["warn", "single"],
         "eqeqeq": ["warn", "smart"],
-        "space-before-function-paren": ["warn"],
+        "space-before-function-paren": ["warn", "never"],
         "no-template-curly-in-string": ["warn"],
         "curly": ["warn", "all"],
         "no-alert": "warn",
@@ -38,7 +38,7 @@
         "no-shadow": ["warn"],
         "brace-style": "warn",
         "comma-spacing": "warn",
-        "max-len": ["warn", { "code": 100 }],
+        "max-len": ["warn", { "code": 120 }],
         "no-var": "error",
         "prefer-const": "warn"
     }
