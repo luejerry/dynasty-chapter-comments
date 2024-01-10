@@ -4,7 +4,7 @@
 // @description View forum posts for a chapter directly from a chapter page.
 // @namespace   https://dynasty-scans.com
 // @include     https://dynasty-scans.com/chapters/*
-// @version     0.3.1
+// @version     0.5.0
 // @grant       none
 // @downloadURL https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
 // @updateURL   https://github.com/luejerry/dynasty-chapter-comments/raw/master/dist/dynastychaptercomments.user.js
@@ -57,6 +57,17 @@ interface ForumPost {
   const forumPageCache: Record<number, Document> = {};
 
   const styles = `
+  #chaptercomments-scroll-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    z-index: 101;
+    background: rgba(0, 0, 0, 0.6);
+  }
   #chaptercomments-view {
     display: flex;
     flex-direction: column;
@@ -114,7 +125,7 @@ interface ForumPost {
 
   .chaptercomments-loading-posts {
     margin: auto;
-    width: 100px;
+    min-width: 100px;
     text-align: center;
     background: rgba(0, 0, 0, 0.8);
     font-weight: bold;
@@ -157,37 +168,37 @@ interface ForumPost {
   }
   `;
 
+  let loadingElement: HTMLDivElement;
+
   applyGlobalStyles(styles);
   initialize();
 
   function initialize(): void {
-    const mainViewDiv = document.createElement('div');
-    mainViewDiv.id = 'chaptercomments-view';
-    mainViewDiv.classList.add('hidden');
     const reader = document.getElementById('reader');
-
-    const controlDiv = document.createElement('div');
-    controlDiv.classList.add('chaptercomments-control');
-
+    const scrollContainer = renderScrollContainer();
+    const mainViewDiv = renderMainView();
+    const controlDiv = renderControlBar();
     const showButton = renderLoadComments();
-    const hideButton = renderHideComments();
+    // const hideButton = renderHideComments();
     showButton.addEventListener('click', () => {
-      showButton.remove();
-      mainViewDiv.classList.remove('hidden');
-      controlDiv.append(hideButton);
+      // showButton.remove();
+      scrollContainer.classList.remove('hidden');
+      // controlDiv.append(hideButton);
       window.scrollBy({ top: 300, behavior: 'smooth' });
     });
-    hideButton.addEventListener('click', () => {
-      hideButton.remove();
-      mainViewDiv.classList.add('hidden');
-      controlDiv.append(showButton);
+    scrollContainer.addEventListener('click', () => {
+      // hideButton.remove();
+      scrollContainer.classList.add('hidden');
+      // controlDiv.append(showButton);
     });
-
+    mainViewDiv.addEventListener('click', (event: Event) => {
+      event.stopPropagation();
+    });
     const loadButton = renderLoadComments();
     loadButton.addEventListener('click', async () => {
-      mainViewDiv.classList.remove('hidden');
+      scrollContainer.classList.remove('hidden');
       loadButton.remove();
-      controlDiv.append(hideButton);
+      controlDiv.append(showButton);
       try {
         await main(mainViewDiv);
       } catch (err) {
@@ -198,14 +209,17 @@ interface ForumPost {
     controlDiv.append(loadButton);
 
     reader.append(controlDiv);
-    reader.append(mainViewDiv);
+    scrollContainer.append(mainViewDiv);
+    reader.append(scrollContainer);
   }
 
   async function main(mainView: HTMLDivElement): Promise<void> {
     const loadingDiv = renderLoadingPosts();
+    loadingElement = loadingDiv;
     mainView.append(loadingDiv);
     window.scrollBy({ top: 300, behavior: 'smooth' });
 
+    logText('Fetching chapter information...');
     const chapterJson: ChapterJson = await fetch(`${window.location.pathname}.json`).then(r =>
       r.json(),
     );
@@ -223,23 +237,21 @@ interface ForumPost {
       return;
     }
 
-    const [
-      nextChapterDate,
-      { forumDoc: forumPage, page: pageNum, numPages: maxPage },
-    ] = await Promise.all([
-      getNextChapterDate(chapterJson, seriesTag),
-      getChapterForumPage({
-        forumPath: forumHref,
-        minDate: chapterDate,
-        utcOffset: utcOffset,
-      }),
-    ]);
+    const [nextChapterDate, { forumDoc: forumPage, page: pageNum, numPages: maxPage }] =
+      await Promise.all([
+        getNextChapterDate(chapterJson, seriesTag),
+        getChapterForumPage({
+          forumPath: forumHref,
+          minDate: chapterDate,
+          utcOffset: utcOffset,
+        }),
+      ]);
     // console.log('looking from', chapterDate);
     // console.log('looking to  ', nextChapterDate);
 
     loadingDiv.remove();
 
-    if (!forumPage || (nextChapterDate && (chapterDate > nextChapterDate))) {
+    if (!forumPage || (nextChapterDate && chapterDate > nextChapterDate)) {
       mainView.append(renderNoPosts());
       return;
     }
@@ -265,6 +277,14 @@ interface ForumPost {
     const style = document.createElement('style');
     style.innerHTML = styleText;
     docHead.appendChild(style);
+  }
+
+  function logText(text: string): void {
+    loadingElement.textContent = text;
+  }
+
+  async function asyncTimeout(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async function getNextChapterDate(chapterJson: ChapterJson, seriesTag: TagJson): Promise<Date> {
@@ -309,6 +329,24 @@ interface ForumPost {
     });
   }
 
+  function renderScrollContainer(): HTMLDivElement {
+    const scrollContainer = document.createElement('div');
+    scrollContainer.id = 'chaptercomments-scroll-container';
+    scrollContainer.classList.add('hidden');
+    return scrollContainer;
+  }
+  function renderMainView(): HTMLDivElement {
+    const mainViewDiv = document.createElement('div');
+    mainViewDiv.id = 'chaptercomments-view';
+    return mainViewDiv;
+  }
+
+  function renderControlBar(): HTMLDivElement {
+    const controlDiv = document.createElement('div');
+    controlDiv.classList.add('chaptercomments-control');
+    return controlDiv;
+  }
+
   function renderLoadComments(): HTMLButtonElement {
     const loadButton = document.createElement('button');
     loadButton.textContent = 'Show comments ';
@@ -318,14 +356,14 @@ interface ForumPost {
     return loadButton;
   }
 
-  function renderHideComments(): HTMLButtonElement {
-    const hideButton = document.createElement('button');
-    hideButton.textContent = 'Hide comments ';
-    const hideIcon = document.createElement('i');
-    hideIcon.classList.add('icon-chevron-up');
-    hideButton.append(hideIcon);
-    return hideButton;
-  }
+  // function renderHideComments(): HTMLButtonElement {
+  //   const hideButton = document.createElement('button');
+  //   hideButton.textContent = 'Hide comments ';
+  //   const hideIcon = document.createElement('i');
+  //   hideIcon.classList.add('icon-chevron-up');
+  //   hideButton.append(hideIcon);
+  //   return hideButton;
+  // }
 
   function renderFooter(): HTMLDivElement {
     const footerDiv = document.createElement('div');
@@ -470,12 +508,14 @@ interface ForumPost {
     page: number;
     numPages: number;
   }> {
+    logText('Fetching series forum page...');
     const forumDoc = await getForumPage(forumPath, 1);
     const pageControls = Array.from(forumDoc.querySelectorAll('.pagination li'));
     const numPages = pageControls.length
       ? parseInt(pageControls[pageControls.length - 2].textContent, 10)
       : 1;
 
+    logText(`Searching ${numPages} pages`);
     const result = await binarySearch(forumPath, minDate, {
       min: 1,
       max: numPages,
@@ -522,6 +562,7 @@ interface ForumPost {
     { min, max, utcOffset }: { min: number; max: number; utcOffset: string },
   ): Promise<{ forumDoc?: Document; page: number }> {
     if (min >= max) {
+      logText(`Searching page ${max}`);
       const { forumDoc, compare } = await scanForumPage(forumPath, max, minDate, utcOffset);
       if (compare <= 0) {
         // console.log('found on page', max);
@@ -531,13 +572,16 @@ interface ForumPost {
       }
     }
     const page = Math.floor((max + min) / 2);
+    logText(`Searching page ${page} (${min}-${max})`);
     const { compare, forumDoc } = await scanForumPage(forumPath, page, minDate, utcOffset);
     if (compare === 0) {
       // console.log('found on page', page);
       return { forumDoc, page };
     } else if (compare < 0) {
+      await asyncTimeout(1000);
       return await binarySearch(forumPath, minDate, { min, max: page, utcOffset });
     } else {
+      await asyncTimeout(1000);
       return await binarySearch(forumPath, minDate, { min: page + 1, max, utcOffset });
     }
   }
